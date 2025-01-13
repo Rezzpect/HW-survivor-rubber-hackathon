@@ -3,13 +3,13 @@
     "@line/bot-sdk": "^9.5.0",
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "onnxruntime-node": "^1.20.1"
   },
   "name": "hw-survivor-rubber-hackathon",
   "description": "",
   "version": "1.0.0",
   "main": "index.js",
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

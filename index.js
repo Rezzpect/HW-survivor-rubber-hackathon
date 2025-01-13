@@ -25,10 +25,15 @@ app.post('/webhook', line.middleware(lineConfig), async (req, res) => {
 });
 
 const handleEvent = async (event) => {
-    console.log(event)
-    return client.replyMessage(event.replyToken, {type:'text',text:'Hello'})
+    const text = 'สวัสดีครับให้ Para Predict ช่วยอะไรคุณดีครับ!'
+    if (event.type !== 'message' || event.message.type !== 'text'){
+        return null;
+    }
+    else if (event.type === 'message'){
+        return client.replyMessage(event.replyToken, {type:'text',text:text})
+    }
 }
- 
+
 app.listen(8080, () => {
     console.log('Listening on 8080')
 });
