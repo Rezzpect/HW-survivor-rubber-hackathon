@@ -12,6 +12,8 @@ const lineConfig = {
     channelSecret: env.SECRET_TOKEN
 }
 
+const api_token = env.API_TOKEN
+
 const client = new line.Client(lineConfig)
 
 app.post('/webhook', line.middleware(lineConfig), async (req, res) => {
@@ -26,7 +28,7 @@ app.post('/webhook', line.middleware(lineConfig), async (req, res) => {
 });
 
 const handleEvent = async (event) => {
-    const text = 'สวัสดีครับให้ Para Predict ช่วยอะไรคุณดีครับ!'
+    const text ='Para-Predict'
     if (event.type !== 'message' || event.message.type !== 'text'){
         return null;
     }
