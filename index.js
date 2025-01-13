@@ -2,6 +2,7 @@ const line = require('@line/bot-sdk')
 const express = require('express')
 const axios = require('axios').default
 const dotenv = require('dotenv')
+const ort = require('onnxruntime-node')
 
 const env = dotenv.config().parsed
 const app = express()
