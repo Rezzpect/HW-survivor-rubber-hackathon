@@ -37,26 +37,6 @@ const handleEvent = async (event) => {
             type: "sticker",
             packageId: "11537",
             stickerId: "52002734",
-            quickReply: {
-                items: [
-                    {
-                        type: 'action',
-                        action: {
-                            type: 'message',
-                            label: 'Start',
-                            text: 'start'
-                        }
-                    },
-                    {
-                        type: 'action',
-                        action: {
-                            type: 'message',
-                            label: 'Help',
-                            text: 'help'
-                        }
-                    }
-                ]
-            }
         });
     }
 
@@ -64,28 +44,19 @@ const handleEvent = async (event) => {
     const helperReply = () => {
         return client.replyMessage(event.replyToken, {
             type: 'text',
-            text: 'วิธีการใช้เรา:\n- พิมพ์ "start" เพื่อเริ่มต้นกรอกข้อมูล.\n- พิมพ์ "help" เพื่อขอความช่วยเหลือ.',
-            quickReply: {
-                items: [
-                    {
-                        type: 'action',
-                        action: {
-                            type: 'message',
-                            label: 'Start',
-                            text: 'start'
-                        }
-                    },
-                    {
-                        type: 'action',
-                        action: {
-                            type: 'message',
-                            label: 'Help',
-                            text: 'help'
-                        }
-                    }
-                ]
-            }
+            text: `วิธีการใช้เรา:\n- พิมพ์อะไรก็ได้เพื่อเริ่มต้นกรอกข้อมูล.\n- เช่น พิมพ์ 'hi'`
         });
+    };
+
+    // Helper function to check if the input is a valid date (m/d/y format)
+    const isValidDate = (date) => {
+        const dateRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/; // m/d/y format
+        return dateRegex.test(date);
+    };
+
+    // Helper function to check if the input is a valid number
+    const isValidNumber = (number) => {
+        return !isNaN(number) && number.trim() !== '';
     };
 
     // Check when event is not a text message
@@ -97,16 +68,6 @@ const handleEvent = async (event) => {
     if (event.type === 'message' && event.message.type === 'text') {
         const message = event.message.text.toLowerCase();
 
-        // Helper function to check if the input is a valid date (m/d/y format)
-        const isValidDate = (date) => {
-            const dateRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/; // m/d/y format
-            return dateRegex.test(date);
-        };
-
-        // Helper function to check if the input is a valid number
-        const isValidNumber = (number) => {
-            return !isNaN(number) && number.trim() !== '';
-        };
 
         if (!userInput[userId]) {
             userInput[userId] = {
@@ -148,7 +109,7 @@ const handleEvent = async (event) => {
                 if (!isValidDate(message)) {
                     return client.replyMessage(event.replyToken, {
                         type: 'text',
-                        text: "Invalid date format. Please enter the date in m/d/y format."
+                        text: "รูปแบบวันที่ไม่ถูกต้อง โปรดป้อนวันที่ในรูปแบบ mm/d/y"
                     });
                 }
             } else if (["MaxWind", "AvgWind", "MinWind", "MaxTemp", "AvgTemp", "MinTemp", "MaxHumidity", "AvgHumidity", "MinHumidity", "AvgPrecip", "TotalPrecip", "TotalRubber"].includes(key)) {
@@ -156,13 +117,13 @@ const handleEvent = async (event) => {
                 if (!isValidNumber(message)) {
                     return client.replyMessage(event.replyToken, {
                         type: 'text',
-                        text: `Invalid input for ${key}. Please enter a valid number.`
+                        text: `ข้อมูลอินพุตไม่ถูกต้องสำหรับ ${key}. กรุณากรอกข้อมูลเป็นตัวเลข`
                     });
                 }
             }
 
             // Save the valid response to userState.data
-            userState.data[key] = message;
+            userState.data[key] = message
         }
 
         // Check if all steps are completed before sending response
@@ -188,10 +149,10 @@ const handleEvent = async (event) => {
 
         // Reset user state AFTER sending the message
         userInput[userId] = undefined;
+        checkStarting = false;
         return;
-
-
     }
+
 };
 
 app.listen(8080, () => {
