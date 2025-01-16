@@ -1,6 +1,7 @@
 const line = require('@line/bot-sdk');
 const express = require('express');
 const dotenv = require('dotenv');
+const axios = require('axios');
 
 const env = dotenv.config().parsed;
 const app = express();
@@ -27,10 +28,10 @@ app.post('/webhook', line.middleware(lineConfig), async (req, res) => {
     }
 });
 
+
 const handleEvent = async (event) => {
     const userId = event.source.userId;
 
-    // Handle "follow" event when a user starts a chat with the bot
     if (event.type === 'follow') {
         console.log(`New user started chat: ${userId}`);
         return client.replyMessage(event.replyToken, {
@@ -40,80 +41,55 @@ const handleEvent = async (event) => {
         });
     }
 
-    // Help reply action function
     const helperReply = () => {
         return client.replyMessage(event.replyToken, {
             type: 'text',
-            text: `วิธีการใช้เรา:\n- พิมพ์อะไรก็ได้เพื่อเริ่มต้นกรอกข้อมูล.\n- เช่น พิมพ์ 'hi'`
+            text: `วิธีการใช้เรา:\n- พิมพ์อะไรก็ได้เพื่อเริ่มต้นกรอกข้อมูลสภาพอากาศในพื้นที่ของคุณ.\n- เช่น พิมพ์ 'hi'`
         });
     };
 
-    // Helper function to check if the input is a valid date (m/d/y format)
-    const isValidDate = (date) => {
-        const dateRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/; // m/d/y format
-        return dateRegex.test(date);
-    };
-
-    // Helper function to check if the input is a valid number
     const isValidNumber = (number) => {
         return !isNaN(number) && number.trim() !== '';
     };
 
-    // Check when event is not a text message
     if (event.type !== 'message' || event.message.type !== 'text') {
         return helperReply();
     }
 
-    // When the message event is text
     if (event.type === 'message' && event.message.type === 'text') {
         const message = event.message.text.toLowerCase();
-
 
         if (!userInput[userId]) {
             userInput[userId] = {
                 step: 0,
-                data: {} // Collect user data
+                env_data: {}
             };
         }
 
         const userState = userInput[userId];
         const prompts = [
-            "Please enter date (m/d/y):",
             "Enter MaxWind (km/h):",
-            "Enter AvgWind:",
-            "Enter MinWind:",
+            "Enter AvgWind (km/h):",
+            "Enter MinWind (km/h):",
             "Enter MaxTemp (°C):",
-            "Enter AvgTemp:",
-            "Enter MinTemp:",
+            "Enter AvgTemp (°C):",
+            "Enter MinTemp (°C):",
             "Enter MaxHumidity (%):",
-            "Enter AvgHumidity:",
-            "Enter MinHumidity:",
+            "Enter AvgHumidity (%):",
+            "Enter MinHumidity (%):",
             "Enter AvgPrecip (mm):",
-            "Enter TotalPrecip:",
-            "Enter TotalRubber (Kg.):"
         ];
         const keys = [
-            "date", "MaxWind", "AvgWind", "MinWind", "MaxTemp", "AvgTemp", "MinTemp",
-            "MaxHumidity", "AvgHumidity", "MinHumidity", "AvgPrecip", "TotalPrecip", "TotalRubber"
+            "MaxWind", "AvgWind", "MinWind", "MaxTemp", "AvgTemp", "MinTemp",
+            "MaxHumidity", "AvgHumidity", "MinHumidity", "AvgPrecip"
         ];
 
         console.log(`User ID: ${userId}, Step: ${userState.step}, Message: ${message}`);
 
-        // Save the user's response to the appropriate key if needed
         if (userState.step > 0) {
-            const key = keys[userState.step - 1]; // Get the key based on the step
+            const key = keys[userState.step - 1];
 
-            // Validate the input before saving it
-            if (key === "date") {
-                // Validate the date format
-                if (!isValidDate(message)) {
-                    return client.replyMessage(event.replyToken, {
-                        type: 'text',
-                        text: "รูปแบบวันที่ไม่ถูกต้อง โปรดป้อนวันที่ในรูปแบบ mm/d/y"
-                    });
-                }
-            } else if (["MaxWind", "AvgWind", "MinWind", "MaxTemp", "AvgTemp", "MinTemp", "MaxHumidity", "AvgHumidity", "MinHumidity", "AvgPrecip", "TotalPrecip", "TotalRubber"].includes(key)) {
-                // Validate if the input is a valid number
+            if (["MaxWind", "AvgWind", "MinWind", "MaxTemp", "AvgTemp", "MinTemp", "MaxHumidity", "AvgHumidity", "MinHumidity", "AvgPrecip"].includes(key)) {
                 if (!isValidNumber(message)) {
                     return client.replyMessage(event.replyToken, {
                         type: 'text',
@@ -122,13 +98,10 @@ const handleEvent = async (event) => {
                 }
             }
 
-            // Save the valid response to userState.data
-            userState.data[key] = message
+            userState.env_data[key] = parseFloat(message);
         }
 
-        // Check if all steps are completed before sending response
         if (userState.step < prompts.length) {
-            // Ask the next question
             const nextPrompt = prompts[userState.step];
             userState.step += 1;
             return client.replyMessage(event.replyToken, {
@@ -137,23 +110,51 @@ const handleEvent = async (event) => {
             });
         }
 
-        // When all steps are completed, send the collected data
-        console.log('Collected data:', userState.data); // Debugging
-        const jsonResponse = JSON.stringify(userState.data, null, 2);
+        console.log('Collected data:', userState.env_data);
+        const jsonPayload = {
+            env_data: userState.env_data
+        };
 
-        // Send JSON back to the user
-        await client.replyMessage(event.replyToken, {
-            type: 'text',
-            text: `ขอบคุณสำหรับข้อมูลที่จำเป็นครับ:\n${jsonResponse}`
-        });
+        // ส่ง JSON ไปยัง API
+        axios.post('http://34.2.30.58:5000/predict', jsonPayload) // ส่ง object ไปได้โดยตรง ไม่ต้อง stringify
+        try {
+            const apiResponse = await axios.post('http://34.2.30.58:5000/predict', jsonPayload);
+
+            console.log('API Response:', apiResponse.data);
+
+            // ตรวจสอบว่า response มี key "result"
+            if (apiResponse.data && apiResponse.data.result !== undefined) {
+                const resultValue = apiResponse.data.result;
+                   // ส่งข้อความกลับไปยังผู้ใช้พร้อมค่าของ "result"
+                   await client.replyMessage(event.replyToken, {
+                    type: 'text',
+                    text: `ข้อมูลสภาพอากาศของคุณถูกส่งสำเร็จ! ผลทำนายปริมาณน้ำยาง คือ: ${resultValue/25} กิโลกรัม/ไร่` // วัดจาก 25 ไร่
+                });
+
+            } else {
+                // แจ้งข้อผิดพลาดหากไม่มี "result" ใน response
+                await client.replyMessage(event.replyToken, {
+                    type: 'text',
+                    text: 'ข้อมูลถูกส่งสำเร็จ แต่ไม่พบค่า "result" ในการตอบกลับจาก server.'
+                });
+            }
+        } catch (error) {
+            console.error('Error sending data to API:', error);
+
+            // แจ้งข้อผิดพลาดกลับไปยังผู้ใช้
+            await client.replyMessage(event.replyToken, {
+                type: 'text',
+                text: 'เกิดข้อผิดพลาดในการส่งข้อมูลไปยัง server กรุณาลองอีกครั้ง.'
+            });
+        }
 
         // Reset user state AFTER sending the message
         userInput[userId] = undefined;
-        checkStarting = false;
         return;
     }
-
 };
+
+
 
 app.listen(8080, () => {
     console.log('Listening on 8080');
